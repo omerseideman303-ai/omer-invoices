@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Invoices">
+<meta name="theme-color" content="#1A1500">
+<title>Omer · Invoices</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #141200;
+  --bg2: #1E1A00;
+  --bg3: #262000;
+  --bg4: #2E2800;
+  --yellow: #F5C842;
+  --yellow-dim: #C9A020;
+  --yellow-pale: rgba(245,200,66,0.12);
+  --yellow-pale2: rgba(245,200,66,0.06);
+  --text: #FFF8DC;
+  --text2: #A89B60;
+  --text3: #6B5F30;
+  --green: #7ED97F;
+  --green-bg: rgba(126,217,127,0.1);
+  --red: #F87171;
+  --red-bg: rgba(248,113,113,0.1);
+  --amber: #FBB040;
+  --amber-bg: rgba(251,176,64,0.1);
+  --border: rgba(245,200,66,0.1);
+  --border2: rgba(245,200,66,0.2);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Syne', sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* ── Header ── */
+.header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: calc(16px + var(--safe-top)) 20px 0;
+  position: sticky; top: 0; z-index: 50;
+}
+.header-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.logo {
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-icon {
+  width: 36px; height: 36px; background: var(--yellow); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-weight: 800; font-size: 16px; color: #141200;
+}
+.logo-text { font-family: var(--display); font-weight: 700; font-size: 17px; letter-spacing: -0.3px; }
+.logo-sub { font-size: 10px; color: var(--text3); font-weight: 400; margin-top: 1px; }
+.sync-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--yellow-pale2); border: 1px solid var(--border);
+  border-radius: 99px; padding: 5px 10px;
+  font-size: 11px; color: var(--text2); font-weight: 500;
+}
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); transition: background 0.3s; }
+.sync-dot.syncing { background: var(--amber); animation: pulse 1s infinite; }
+.sync-dot.error { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── Tab bar ── */
+.tabs {
+  display: flex; gap: 4px;
+}
+.tab-btn {
+  flex: 1; padding: 10px 6px; border: none; background: none;
+  font-family: var(--display); font-size: 12px; font-weight: 600;
+  color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all 0.2s; letter-spacing: 0.2px; white-space: nowrap;
+}
+.tab-btn.active { color: var(--yellow); border-bottom-color: var(--yellow); }
+
+/* ── Pages ── */
+.page { display: none; padding-bottom: calc(32px + var(--safe-bottom)); min-height: calc(100vh - 120px); }
+.page.active { display: block; }
+.content { padding: 20px; max-width: 640px; margin: 0 auto; }
+
+/* ── New Invoice Form ── */
+.form-hero {
+  background: var(--yellow-pale); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+}
+.form-hero-title {
+  font-family: var(--display); font-size: 22px; font-weight: 800;
+  color: var(--yellow); letter-spacing: -0.5px; margin-bottom: 4px;
+}
+.form-hero-sub { font-size: 13px; color: var(--text2); }
+
+.field { margin-bottom: 12px; }
+.field label {
+  display: block; font-size: 11px; font-weight: 600; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 6px;
+}
+input, textarea, select {
+  width: 100%; padding: 13px 14px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-family: var(--sans); font-size: 15px; outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-appearance: none; appearance: none;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--yellow); background: var(--bg4);
+}
+input::placeholder, textarea::placeholder { color: var(--text3); }
+textarea { resize: none; min-height: 75px; }
+select option { background: var(--bg3); }
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.amount-wrap { position: relative; }
+.amount-prefix {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  font-size: 16px; font-weight: 600; color: var(--yellow); pointer-events: none;
+}
+.amount-wrap input { padding-left: 28px; font-size: 18px; font-weight: 600; color: var(--yellow); }
+
+/* ── Buttons ── */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 20px; border-radius: var(--radius-sm);
+  font-size: 15px; font-weight: 700; font-family: var(--display);
+  cursor: pointer; border: none; transition: all 0.15s; width: 100%;
+  letter-spacing: -0.2px;
+}
+.btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; flex-shrink: 0; }
+.btn-primary { background: var(--yellow); color: #141200; }
+.btn-primary:active { filter: brightness(0.9); transform: scale(0.98); }
+.btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+.btn-secondary:active { background: var(--bg4); transform: scale(0.98); }
+.btn-row { display: flex; gap: 10px; margin-top: 16px; }
+.btn-row .btn { flex: 1; }
+.btn-full { margin-top: 10px; }
+
+/* ── Preview ── */
+.preview-wrap { margin-top: 20px; display: none; }
+.preview-wrap.show { display: block; }
+.preview-label {
+  font-size: 10px; font-weight: 700; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+}
+.invoice-preview {
+  background: #FEFDF5; border-radius: var(--radius); padding: 24px;
+  color: #1A1400;
+}
+.pv-head { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.pv-title { font-family: var(--display); font-size: 22px; font-weight: 800; color: #1A1400; letter-spacing: -0.5px; }
+.pv-from { font-size: 12px; line-height: 1.9; color: #666; margin-top: 8px; }
+.pv-from strong { color: #1A1400; font-size: 13px; }
+.pv-meta { text-align: right; font-size: 12px; color: #888; line-height: 1.9; }
+.pv-meta strong { color: #1A1400; font-size: 14px; font-weight: 700; }
+.pv-hr { border: none; border-top: 1px solid #E8E0C0; margin: 14px 0; }
+.pv-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: #555; }
+.pv-row strong { color: #1A1400; max-width: 55%; text-align: right; }
+.pv-total { display: flex; justify-content: space-between; padding: 14px 0; font-size: 20px; font-weight: 800; border-top: 2px solid #1A1400; margin-top: 8px; font-family: var(--display); }
+.pv-bank { background: #F5F0DC; border-radius: 8px; padding: 12px 14px; margin-top: 14px; font-size: 12px; line-height: 1.9; color: #666; }
+.pv-bank h4 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #bbb; font-weight: 700; margin-bottom: 4px; }
+.pv-notes { background: #FFFBEE; border-radius: 8px; padding: 10px 12px; margin-top: 10px; font-size: 12px; color: #666; line-height: 1.7; border-left: 3px solid #F5C842; }
+.pv-thanks { font-size: 12px; color: #999; margin-top: 14px; }
+.pv-thanks strong { color: #1A1400; }
+
+/* ── Invoice cards ── */
+.inv-list { display: flex; flex-direction: column; gap: 10px; }
+
+.inv-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  transition: border-color 0.15s; animation: fadeUp 0.2s ease;
+  cursor: default;
+}
+@keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+.inv-card:active { border-color: var(--border2); }
+
+.inv-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.inv-card-num {
+  font-family: var(--display); font-size: 12px; font-weight: 700;
+  color: var(--yellow); background: var(--yellow-pale); border-radius: var(--radius-xs);
+  padding: 3px 8px; display: inline-block;
+}
+.inv-card-amount { font-family: var(--display); font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+.inv-card-client { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.inv-card-desc { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inv-card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.inv-card-date { font-size: 12px; color: var(--text3); }
+.inv-card-actions { display: flex; gap: 6px; align-items: center; }
+
+.badge {
+  font-size: 11px; font-weight: 700; padding: 4px 10px;
+  border-radius: 99px; cursor: pointer; transition: opacity 0.15s;
+  font-family: var(--display); letter-spacing: 0.2px;
+}
+.badge:active { opacity: 0.7; }
+.badge-paid { background: var(--green-bg); color: var(--green); }
+.badge-pending { background: var(--amber-bg); color: var(--amber); }
+
+.icon-btn {
+  width: 32px; height: 32px; border-radius: var(--radius-xs);
+  border: 1px solid var(--border); background: none; color: var(--text2);
+  cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.icon-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.icon-btn:active { background: var(--bg3); color: var(--text); }
+.icon-btn.del:active { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+
+/* ── Filter tabs ── */
+.filter-row { display: flex; gap: 6px; margin-bottom: 16px; }
+.ftab {
+  padding: 6px 14px; border-radius: 99px; border: 1px solid var(--border);
+  background: none; font-size: 12px; color: var(--text2);
+  cursor: pointer; font-family: var(--sans); font-weight: 500; transition: all 0.15s;
+}
+.ftab.active { background: var(--yellow); color: #141200; border-color: var(--yellow); font-weight: 700; }
+
+/* ── Stats ── */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.stat-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+}
+.stat-card.accent { background: var(--yellow-pale); border-color: var(--border2); }
+.stat-label { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+.stat-value { font-family: var(--display); font-size: 28px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+.stat-value.yellow { color: var(--yellow); }
+.stat-value.green { color: var(--green); }
+.stat-value.amber { color: var(--amber); }
+.stat-sub { font-size: 11px; color: var(--text3); margin-top: 5px; }
+
+.chart-section { margin-top: 24px; }
+.section-title { font-family: var(--display); font-size: 14px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+.chart-wrap { display: flex; flex-direction: column; gap: 10px; }
+.chart-row { display: flex; align-items: center; gap: 10px; }
+.chart-name { font-size: 12px; color: var(--text2); width: 90px; flex-shrink: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chart-bg { flex: 1; height: 28px; background: var(--bg3); border-radius: 6px; overflow: hidden; }
+.chart-fill { height: 100%; background: var(--yellow); border-radius: 5px; display: flex; align-items: center; padding: 0 10px; transition: width 0.7s cubic-bezier(.4,0,.2,1); }
+.chart-val { font-size: 11px; font-family: var(--display); font-weight: 700; color: #141200; white-space: nowrap; }
+.chart-val-out { font-size: 11px; font-family: var(--display); font-weight: 600; color: var(--text2); margin-left: 8px; }
+
+/* ── Empty ── */
+.empty { text-align: center; padding: 48px 20px; }
+.empty-emoji { font-size: 48px; margin-bottom: 14px; }
+.empty-title { font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
+.empty-sub { font-size: 13px; color: var(--text3); }
+
+/* ── Page header ── */
+.page-head { margin-bottom: 20px; }
+.page-head-title { font-family: var(--display); font-size: 26px; font-weight: 800; color: var(--yellow); letter-spacing: -0.5px; margin-bottom: 2px; }
+.page-head-sub { font-size: 13px; color: var(--text2); }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: calc(24px + var(--safe-bottom)); left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--yellow); color: #141200;
+  padding: 11px 20px; border-radius: 99px; font-size: 13px; font-weight: 700;
+  font-family: var(--display); opacity: 0; transition: all 0.25s;
+  pointer-events: none; white-space: nowrap; z-index: 200;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.loader { text-align: center; padding: 40px; color: var(--text3); font-size: 13px; }
+
+@media (min-width: 640px) {
+  .content { padding: 28px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">
+      <div class="logo-icon">OS</div>
+      <div>
+        <div class="logo-text">Omer Seideman</div>
+        <div class="logo-sub">Invoice Manager</div>
+      </div>
+    </div>
+    <div class="sync-pill">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-label">syncing</span>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showPage('new')" id="tab-new">✏️ New Invoice</button>
+    <button class="tab-btn" onclick="showPage('invoices')" id="tab-invoices">📋 Past Invoices</button>
+    <button class="tab-btn" onclick="showPage('stats')" id="tab-stats">📊 Statistics</button>
+  </div>
+</div>
+
+<!-- NEW INVOICE -->
+<div class="page active" id="page-new">
+  <div class="content">
+    <div class="form-hero">
+      <div class="form-hero-title">Create Invoice</div>
+      <div class="form-hero-sub">Fill in the details and you're done</div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Invoice #</label>
+        <input type="text" id="f-num" placeholder="69" inputmode="numeric" />
+      </div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="f-date" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Client name</label>
+      <input type="text" id="f-client" placeholder="Easy Lighting" list="client-suggestions" autocomplete="off" />
+      <datalist id="client-suggestions"></datalist>
+    </div>
+
+    <div class="field">
+      <label>Amount (AUD)</label>
+      <div class="amount-wrap">
+        <span class="amount-prefix">$</span>
+        <input type="number" id="f-amount" placeholder="250" inputmode="decimal" min="0" step="0.01" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Description</label>
+      <textarea id="f-desc" placeholder="Sound work at Jewish event 12/5/2026"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Notes (optional)</label>
+      <textarea id="f-notes" placeholder="Payment terms, extra info..." style="min-height:55px;"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Status</label>
+      <select id="f-status">
+        <option value="pending">⏳ Pending payment</option>
+        <option value="paid">✅ Already paid</option>
+      </select>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="previewForm()">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/></svg>
+        Preview
+      </button>
+      <button class="btn btn-primary" onclick="saveInvoice()">
+        <svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
+        Save
+      </button>
+    </div>
+    <button class="btn btn-secondary btn-full" onclick="saveAndDownload()">
+      <svg viewBox="0 0 24 24"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 4v11"/></svg>
+      Save & download PDF
+    </button>
+
+    <div class="preview-wrap" id="preview-wrap">
+      <div class="preview-label">Preview</div>
+      <div class="invoice-preview" id="preview-card"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAST INVOICES -->
+<div class="page" id="page-invoices">
+  <div class="content">
+    <div class="page-head">
+      <div class="page-head-title">Past Invoices</div>
+      <div class="page-head-sub" id="inv-sub">All your invoices in one place</div>
+    </div>
+    <div class="filter-row">
+      <button class="ftab active" onclick="setFilter('all',this)">All</button>
+      <button class="ftab" onclick="setFilter('pending',this)">Pending</button>
+      <button class="ftab" onclick="setFilter('paid',this)">Paid</button>
+    </div>
+    <div class="inv-list" id="all-list"><div class="loader">Loading...</div></div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="page" id="page-stats">
+  <div class="content">
+    <div class="page-head">
+      <div class="page-head-title">Statistics</div>
+      <div class="page-head-sub">Your business at a glance</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card accent">
+        <div class="stat-label">Total invoices</div>
+        <div class="stat-value yellow" id="s-count">—</div>
+        <div class="stat-sub">all time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total earned</div>
+        <div class="stat-value green" id="s-earned">—</div>
+        <div class="stat-sub">paid invoices</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Outstanding</div>
+        <div class="stat-value amber" id="s-outstanding">—</div>
+        <div class="stat-sub">awaiting payment</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg invoice</div>
+        <div class="stat-value" id="s-avg">—</div>
+        <div class="stat-sub">per job</div>
+      </div>
+    </div>
+
+    <div class="stats-grid" style="margin-top:0;">
+      <div class="stat-card">
+        <div class="stat-label">Paid invoices</div>
+        <div class="stat-value green" id="s-paid-count">—</div>
+        <div class="stat-sub">completed jobs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value amber" id="s-pending-count">—</div>
+        <div class="stat-sub">waiting to pay</div>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <div class="section-title">Earnings by client</div>
+      <div class="chart-wrap" id="client-chart"><div class="loader">Loading...</div></div>
+    </div>
+
+    <div class="chart-section">
+      <div class="section-title">Recent activity</div>
+      <div class="inv-list" id="recent-list"><div class="loader">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const OWNER = {
+  name:'Omer Seideman', abn:'27 314 945 480', mobile:'0439 583 033',
+  email:'omerseideman303@gmail.com', bank:'Commonwealth Bank',
+  accountName:'Omer Seideman', bsb:'063-169', account:'10783287'
+};
+
+const SB_URL = 'https://urdcuhiazfdeeljdrpbi.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyZGN1aGlhemZkZWVsamRycGJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3ODQ4OTAsImV4cCI6MjA5NDM2MDg5MH0.h4lH_VkivFVXnmlNsvuUk_6eiH4oX6Hqq7egsuYzHDA';
+
+const sb = supabase.createClient(SB_URL, SB_KEY);
+let allInvoices = [];
+let currentFilter = 'all';
+
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function fmtDate(s) { if (!s) return ''; const [y,m,d] = s.split('-'); return d+'/'+m+'/'+y; }
+function fmtMoney(n) { return '$' + (parseFloat(n)||0).toLocaleString('en-AU', {minimumFractionDigits:0, maximumFractionDigits:0}); }
+
+function setSyncing(on, err) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot' + (on ? ' syncing' : err ? ' error' : '');
+  lbl.textContent = on ? 'syncing' : err ? 'error' : 'live';
+}
+
+async function loadInvoices() {
+  setSyncing(true);
+  try {
+    const { data, error } = await sb.from('invoices').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    allInvoices = data || [];
+    setSyncing(false);
+    renderStats();
+    renderAllInvoices();
+    updateClientSuggestions();
+    setNextNum();
+  } catch(e) {
+    setSyncing(false, true);
+    toast('Connection error');
+  }
+}
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+  if (id === 'stats') renderStats();
+  if (id === 'invoices') renderAllInvoices();
+  if (id === 'new') { setNextNum(); updateClientSuggestions(); document.getElementById('f-date').value = todayStr(); }
+  window.scrollTo(0, 0);
+}
+
+function renderStats() {
+  const total = allInvoices.length;
+  const paid = allInvoices.filter(i=>i.status==='paid');
+  const pending = allInvoices.filter(i=>i.status==='pending');
+  const paidSum = paid.reduce((s,i)=>s+parseFloat(i.amount||0),0);
+  const pendingSum = pending.reduce((s,i)=>s+parseFloat(i.amount||0),0);
+  const avg = total ? allInvoices.reduce((s,i)=>s+parseFloat(i.amount||0),0)/total : 0;
+
+  document.getElementById('s-count').textContent = total;
+  document.getElementById('s-earned').textContent = fmtMoney(paidSum);
+  document.getElementById('s-outstanding').textContent = fmtMoney(pendingSum);
+  document.getElementById('s-avg').textContent = fmtMoney(avg);
+  document.getElementById('s-paid-count').textContent = paid.length;
+  document.getElementById('s-pending-count').textContent = pending.length;
+
+  const byClient = {};
+  allInvoices.forEach(i => { byClient[i.client] = (byClient[i.client]||0) + parseFloat(i.amount||0); });
+  const sorted = Object.entries(byClient).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const max = sorted.length ? sorted[0][1] : 1;
+  document.getElementById('client-chart').innerHTML = sorted.length
+    ? sorted.map(([name, val]) => {
+        const pct = Math.round((val/max)*100);
+        const inside = pct > 28;
+        return `<div class="chart-row">
+          <div class="chart-name">${name.length>12?name.slice(0,11)+'…':name}</div>
+          <div class="chart-bg"><div class="chart-fill" style="width:${pct}%">${inside?`<span class="chart-val">${fmtMoney(val)}</span>`:''}</div></div>
+          ${!inside?`<span class="chart-val-out">${fmtMoney(val)}</span>`:''}
+        </div>`;
+      }).join('')
+    : '<div style="font-size:13px;color:var(--text3)">No data yet.</div>';
+
+  const recent = allInvoices.slice(0, 4);
+  document.getElementById('recent-list').innerHTML = recent.length
+    ? recent.map(inv => cardHTML(inv, true)).join('')
+    : emptyHTML('📭', 'No invoices yet', 'Go create your first one!');
+}
+
+function cardHTML(inv, compact) {
+  return `<div class="inv-card">
+    <div class="inv-card-top">
+      <span class="inv-card-num">#${inv.num}</span>
+      <div class="inv-card-amount">${fmtMoney(inv.amount)}</div>
+    </div>
+    <div class="inv-card-client">${inv.client||'—'}</div>
+    <div class="inv-card-desc">${inv.description||''}</div>
+    <div class="inv-card-bottom">
+      <div class="inv-card-date">${fmtDate(inv.date)}</div>
+      <div class="inv-card-actions">
+        <span class="badge badge-${inv.status}" onclick="toggleStatus('${inv.id}')">${inv.status==='paid'?'✓ Paid':'⏳ Pending'}</span>
+        ${!compact?`
+        <button class="icon-btn" onclick="dlById('${inv.id}')" title="Download">
+          <svg viewBox="0 0 24 24"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 4v11"/></svg>
+        </button>
+        <button class="icon-btn del" onclick="deleteInv('${inv.id}')" title="Delete">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+        </button>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function emptyHTML(emoji, title, sub) {
+  return `<div class="empty"><div class="empty-emoji">${emoji}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`;
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAllInvoices();
+}
+
+function renderAllInvoices() {
+  const filtered = currentFilter === 'all' ? allInvoices : allInvoices.filter(i => i.status === currentFilter);
+  document.getElementById('inv-sub').textContent = filtered.length + ' invoice' + (filtered.length!==1?'s':'');
+  document.getElementById('all-list').innerHTML = filtered.length
+    ? filtered.map(inv => cardHTML(inv, false)).join('')
+    : emptyHTML('📭', 'Nothing here', currentFilter==='all'?'No invoices yet':'No '+currentFilter+' invoices');
+}
+
+async function toggleStatus(id) {
+  const inv = allInvoices.find(i => i.id === id);
+  if (!inv) return;
+  const next = inv.status === 'paid' ? 'pending' : 'paid';
+  inv.status = next;
+  renderAllInvoices(); renderStats();
+  setSyncing(true);
+  const { error } = await sb.from('invoices').update({ status: next }).eq('id', id);
+  setSyncing(false, !!error);
+  toast(next === 'paid' ? '✅ Marked as paid!' : '⏳ Marked as pending');
+}
+
+async function deleteInv(id) {
+  if (!confirm('Delete this invoice?')) return;
+  allInvoices = allInvoices.filter(i => i.id !== id);
+  renderAllInvoices(); renderStats();
+  setSyncing(true);
+  const { error } = await sb.from('invoices').delete().eq('id', id);
+  setSyncing(false, !!error);
+  toast(error ? 'Could not delete' : '🗑️ Invoice deleted');
+}
+
+function getForm() {
+  return {
+    num: document.getElementById('f-num').value.trim(),
+    date: document.getElementById('f-date').value,
+    client: document.getElementById('f-client').value.trim(),
+    amount: parseFloat(document.getElementById('f-amount').value) || 0,
+    description: document.getElementById('f-desc').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+    status: document.getElementById('f-status').value,
+  };
+}
+
+function validate() {
+  const d = getForm();
+  if (!d.num) { toast('Enter an invoice number'); return null; }
+  if (!d.client) { toast('Enter a client name'); return null; }
+  if (!d.amount) { toast('Enter an amount'); return null; }
+  if (!d.description) { toast('Enter a description'); return null; }
+  return d;
+}
+
+async function saveInvoice() {
+  const d = validate(); if (!d) return;
+  setSyncing(true);
+  const { data, error } = await sb.from('invoices').insert([d]).select().single();
+  setSyncing(false, !!error);
+  if (error) { toast('Could not save — try again'); return; }
+  allInvoices = [data, ...allInvoices];
+  toast('🎉 Invoice #' + d.num + ' saved!');
+  clearForm(); showPage('invoices');
+  renderAllInvoices(); updateClientSuggestions();
+}
+
+async function saveAndDownload() {
+  const d = validate(); if (!d) return;
+  setSyncing(true);
+  const { data, error } = await sb.from('invoices').insert([d]).select().single();
+  setSyncing(false, !!error);
+  if (error) { toast('Could not save'); return; }
+  allInvoices = [data, ...allInvoices];
+  dlHTML(d);
+  toast('✅ Saved & downloading!');
+  clearForm(); showPage('invoices');
+  renderAllInvoices(); updateClientSuggestions();
+}
+
+function previewForm() {
+  const d = validate(); if (!d) return;
+  document.getElementById('preview-card').innerHTML = buildPreview(d);
+  const wrap = document.getElementById('preview-wrap');
+  wrap.classList.add('show');
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function dlById(id) { const inv = allInvoices.find(i=>i.id===id); if (inv) dlHTML(inv); }
+
+function buildPreview(d) {
+  return `<div class="pv-head">
+    <div><div class="pv-title">Tax Invoice</div>
+    <div class="pv-from"><strong>${OWNER.name}</strong><br>ABN: ${OWNER.abn}<br>Mobile: ${OWNER.mobile}<br>Email: ${OWNER.email}</div></div>
+    <div class="pv-meta"><strong>Invoice #${d.num}</strong><br>${fmtDate(d.date)}</div>
+  </div>
+  <hr class="pv-hr">
+  <div class="pv-row"><span>Bill to</span><strong>${d.client}</strong></div>
+  <div class="pv-row"><span>Description</span><strong>${d.description}</strong></div>
+  <div class="pv-total"><span>Total</span><span>$${parseFloat(d.amount).toFixed(2)} AUD</span></div>
+  <div class="pv-bank"><h4>Payment details</h4>Bank: ${OWNER.bank}<br>Account name: ${OWNER.accountName}<br>BSB: ${OWNER.bsb} &nbsp;|&nbsp; Account: ${OWNER.account}</div>
+  ${d.notes?`<div class="pv-notes">${d.notes}</div>`:''}
+  <div class="pv-thanks">Thanks,<br><strong>${OWNER.name}</strong></div>`;
+}
+
+function dlHTML(d) {
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice #${d.num} — ${d.client}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Helvetica Neue',Arial,sans-serif;max-width:720px;margin:48px auto;padding:2.5rem;color:#1A1400;background:#fff;}
+.h{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;}
+.t{font-size:32px;font-weight:800;letter-spacing:-1px;}
+.f{margin-top:10px;font-size:13px;line-height:1.9;color:#666;}.f strong{color:#1A1400;font-size:15px;font-weight:700;}
+.m{text-align:right;font-size:13px;color:#888;line-height:1.9;}.m strong{color:#1A1400;font-size:15px;font-weight:700;}
+hr{border:none;border-top:1px solid #E8E0C0;margin:1.5rem 0;}
+.r{display:flex;justify-content:space-between;padding:7px 0;font-size:14px;color:#555;}.r strong{color:#1A1400;font-weight:700;max-width:55%;text-align:right;}
+.tot{display:flex;justify-content:space-between;padding:16px 0;font-size:22px;font-weight:800;border-top:2px solid #1A1400;margin-top:10px;}
+.bank{background:#F5F0DC;border-radius:10px;padding:16px;margin-top:1.5rem;font-size:13px;line-height:1.9;color:#666;}
+.bank h4{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#aaa;font-weight:700;margin-bottom:4px;}
+.notes{background:#FFFBEE;border-radius:10px;padding:14px 16px;margin-top:12px;font-size:13px;color:#666;line-height:1.7;border-left:3px solid #F5C842;}
+.ty{font-size:13px;color:#888;margin-top:1.5rem;}.ty strong{color:#1A1400;font-weight:700;}
+@media print{body{margin:0;padding:1.5rem;}}</style></head><body>
+<div class="h">
+  <div><div class="t">Tax Invoice</div><div class="f"><strong>${OWNER.name}</strong><br>ABN: ${OWNER.abn}<br>Mobile: ${OWNER.mobile}<br>Email: ${OWNER.email}</div></div>
+  <div class="m"><strong>Invoice #${d.num}</strong><br>${fmtDate(d.date)}</div>
+</div><hr>
+<div class="r"><span>Bill to</span><strong>${d.client}</strong></div>
+<div class="r"><span>Description</span><strong>${d.description}</strong></div>
+<div class="tot"><span>Total</span><span>$${parseFloat(d.amount).toFixed(2)} AUD</span></div>
+<div class="bank"><h4>Payment details</h4>Bank: ${OWNER.bank}<br>Account name: ${OWNER.accountName}<br>BSB: ${OWNER.bsb} &nbsp;|&nbsp; Account: ${OWNER.account}</div>
+${d.notes?`<div class="notes">${d.notes}</div>`:''}
+<div class="ty">Thanks,<br><strong>${OWNER.name}</strong></div>
+</body></html>`;
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `Invoice_${d.num}_${(d.client||'client').replace(/\s+/g,'_')}.html`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function setNextNum() {
+  if (!allInvoices.length) { document.getElementById('f-num').value = '69'; return; }
+  const nums = allInvoices.map(i=>parseInt(i.num)).filter(n=>!isNaN(n));
+  document.getElementById('f-num').value = nums.length ? Math.max(...nums)+1 : '';
+}
+
+function updateClientSuggestions() {
+  const clients = [...new Set(allInvoices.map(i=>i.client).filter(Boolean))];
+  document.getElementById('client-suggestions').innerHTML = clients.map(c=>`<option value="${c}">`).join('');
+}
+
+function clearForm() {
+  ['f-num','f-client','f-amount','f-desc','f-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('f-date').value = todayStr();
+  document.getElementById('f-status').value = 'pending';
+  document.getElementById('preview-wrap').classList.remove('show');
+}
+
+function toast(msg, ms=2800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(window._t);
+  window._t = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+document.getElementById('f-date').value = todayStr();
+loadInvoices();
+</script>
+</body>
+</html>
